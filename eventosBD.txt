@@ -1,0 +1,40 @@
+LOAD CSV WITH HEADERS FROM 'file:///limpiado.csv' AS row
+// Crear nodos de Evento
+CREATE (:Evento {
+    titulo: row.titulo,
+    tematica: row.tematica,
+    fecha: row.fecha,
+    publico: row.publico,
+    foto: row.foto,
+    link: row.link
+})
+// Crear nodos de Lugar
+MERGE (:Lugar {
+    nombre: row.lugar,
+    localidad: row.localidad,
+    idProvincia: row.idProvincia,
+    provincia: row.provincia,
+    calle: COALESCE(row.calle,"")
+})
+//Crear nodos provincias
+MERGE (:Provincia {
+    nombre: row.provincia,
+    idProvincia: row.idProvincia
+})
+
+// Enlazar nodos de Evento con nodos de Categoría
+WITH row
+MATCH (evento:Evento {titulo: row.titulo})
+WHERE row.categoria IS NOT NULL
+MERGE (categoria:Categoria {nombre: row.categoria})
+MERGE (evento)-[:PERTENECE_A_CATEGORIA]->(categoria)
+//Enlazar nodos de Evento con nodos de Lugar
+WITH row, evento
+MATCH (l:Lugar {nombre: row.lugar})
+MERGE (evento)-[:OCURRE_EN]->(l)
+
+// Enlazar nodos de Lugar con nodos de Provincia
+WITH row
+MATCH (lugar:Lugar {nombre: row.lugar})
+MATCH (provincia:Provincia {idProvincia: COALESCE(row.idProvincia, '')}) // Utilizar COALESCE para manejar valores nulos
+MERGE (lugar)-[:PERTENECE_A]->(provincia)
